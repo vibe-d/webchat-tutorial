@@ -1,32 +1,5 @@
 import vibe.d;
 
-final class Room {
-	RedisDatabase db;
-	string id;
-	RedisList!string messages;
-	ManualEvent messageEvent;
-
-	this(RedisDatabase db, string id)
-	{
-		this.db = db;
-		this.id = id;
-		this.messages = db.getAsList!string("webchat_"~id);
-		this.messageEvent = createManualEvent();
-	}
-
-	void addMessage(string name, string message)
-	{
-		this.messages.insertBack(name ~ ": " ~ message);
-		this.messageEvent.emit();
-	}
-
-	void waitForMessage(long next_message)
-	{
-		while (messages.length <= next_message)
-			messageEvent.wait();
-	}
-}
-
 final class WebChat {
 	private {
 		RedisDatabase m_db;
@@ -91,6 +64,33 @@ final class WebChat {
 	{
 		if (auto pr = id in m_rooms) return *pr;
 		return m_rooms[id] = new Room(m_db, id);
+	}
+}
+
+final class Room {
+	RedisDatabase db;
+	string id;
+	RedisList!string messages;
+	ManualEvent messageEvent;
+
+	this(RedisDatabase db, string id)
+	{
+		this.db = db;
+		this.id = id;
+		this.messages = db.getAsList!string("webchat_"~id);
+		this.messageEvent = createManualEvent();
+	}
+
+	void addMessage(string name, string message)
+	{
+		this.messages.insertBack(name ~ ": " ~ message);
+		this.messageEvent.emit();
+	}
+
+	void waitForMessage(long next_message)
+	{
+		while (messages.length <= next_message)
+			messageEvent.wait();
 	}
 }
 

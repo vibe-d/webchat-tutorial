@@ -1,27 +1,5 @@
 import vibe.d;
 
-final class Room {
-	string[] messages;
-	ManualEvent messageEvent;
-
-	this()
-	{
-		this.messageEvent = createManualEvent();
-	}
-
-	void addMessage(string name, string message)
-	{
-		this.messages ~= name ~ ": " ~ message;
-		this.messageEvent.emit();
-	}
-
-	void waitForMessage(size_t next_message)
-	{
-		while (messages.length <= next_message)
-			messageEvent.wait();
-	}
-}
-
 final class WebChat {
 	private {
 		Room[string] m_rooms;
@@ -79,6 +57,28 @@ final class WebChat {
 	{
 		if (auto pr = id in m_rooms) return *pr;
 		return m_rooms[id] = new Room;
+	}
+}
+
+final class Room {
+	string[] messages;
+	ManualEvent messageEvent;
+
+	this()
+	{
+		this.messageEvent = createManualEvent();
+	}
+
+	void addMessage(string name, string message)
+	{
+		this.messages ~= name ~ ": " ~ message;
+		this.messageEvent.emit();
+	}
+
+	void waitForMessage(size_t next_message)
+	{
+		while (messages.length <= next_message)
+			messageEvent.wait();
 	}
 }
 
