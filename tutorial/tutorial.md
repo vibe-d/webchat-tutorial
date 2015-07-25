@@ -176,15 +176,6 @@ We already have a form in our `room.dt` to submit chat messages, so let's add a 
 
 This simply redirects back to the chat room, so that multiple messages can be posted in sequence. To get a working prototype, let's first add a simple in-memory store of the message history. Rooms will be created on-demand using the `getOrCreateRoom` helper method.
 
-	final class Room {
-		string[] messages;
-
-		void addMessage(string name, string message)
-		{
-			messages ~= name ~ ": " ~ message;
-		}
-	}
-
 	final class WebChat {
 		private Room[string] m_rooms;
 
@@ -207,6 +198,15 @@ This simply redirects back to the chat room, so that multiple messages can be po
 		{
 			if (auto pr = id in m_rooms) return *pr;
 			return m_rooms[id] = new Room;
+		}
+	}
+
+	final class Room {
+		string[] messages;
+
+		void addMessage(string name, string message)
+		{
+			messages ~= name ~ ": " ~ message;
 		}
 	}
 
@@ -378,14 +378,6 @@ Now that we have a fast and persistent chat service running, there is just one t
 
 Fortunately, Redis has a PubSub functionality that we can use here. It consists of named "channels" to which any client can send messages. All clients connected to the database can then subscribe to one or more of those channels and will each receive these messages. For our use case, to keep things simple, we are going to use a single channel to which we will send the names of the rooms that got new messages.
 
-	final class Room {
-		void addMessage(string name, string message)
-		{
-			this.messages.insertBack(name ~ ": " ~ message);
-			this.db.publish("webchat", id);
-		}
-	}
-
 	final class WebChat {
 		private {
 			// ...
@@ -402,6 +394,18 @@ Fortunately, Redis has a PubSub functionality that we can use here. It consists 
 				if (auto pr = message in m_rooms)
 					pr.messageEvent.emit();
 			});
+		}
+
+		// ...
+	}
+
+	final class Room {
+		// ...
+
+		void addMessage(string name, string message)
+		{
+			this.messages.insertBack(name ~ ": " ~ message);
+			this.db.publish("webchat", id);
 		}
 
 		// ...
