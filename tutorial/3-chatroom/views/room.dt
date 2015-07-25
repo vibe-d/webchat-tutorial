@@ -1,0 +1,14 @@
+doctype html
+html
+	head
+		title #{id} - WebChat
+		style.
+			textarea, input { width: 100%; }
+	body
+		h1 Room '#{id}'
+
+		textarea#history(rows=20, readonly=true)
+		form(action="room", method="POST")
+			input(type="hidden", name="id", value=id)
+			input(type="hidden", name="name", value=name)
+			input#inputLine(type="text", name="message", autofocus=true)

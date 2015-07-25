@@ -1,0 +1,6 @@
+name "webchat"
+description "A simple vibe.d server application."
+copyright "Copyright © 2015, sludwig"
+authors "sludwig"
+dependency "vibe-d" version="~>0.7.19"
+versions "VibeDefaultMain"
