@@ -103,7 +103,9 @@ To make the page rendering work, we still have to add `index.dt` to the views fo
 					input#name(type="text", name="name")
 				button(type="sumbit") Enter
 
-Running `dub` and refreshing the browser now yields this:
+Now, you may have noticed that the call to render the above template is using template arguments instead of normal parameters (denoted by the `!`). The reason for that is that the Diet templates are actually translated into HTML at compile time using D's powerful meta-programming abilities. This means that the code generated, even if there are dynamic elements inside (see the title tag in the following `room.dt` file), is always as fast as it gets - usually as fast as serving a static page from RAM.
+
+Now, running `dub` and refreshing the browser now yields this:
 
 ![Welcome page](2-index.png)
 
@@ -145,7 +147,7 @@ We already have a form in our `room.dt`, so let's add a handler for it:
 		redirect("room?id="~id.urlEncode~"&name="~name.urlEncode);
 	}
 
-To get a working prototype, let's add a simple in-memory store of the message history. Rooms are created on-demand using the `getOrCreateRoom` helper method.
+To get a working prototype, let's first add a simple in-memory store of the message history. Rooms are created on-demand using the `getOrCreateRoom` helper method.
 
 	final class Room {
 		string[] messages;
@@ -284,14 +286,14 @@ Now that the backend is ready, we'll have to add some JavaScript to the frontend
 This now gets integrated into `room.dt` by appending some script tags to the end of the `<body>` element:
 
 	- import vibe.data.json;
-	script(src="#{req.rootDir}scripts/chat.js")
+	script(src="scripts/chat.js")
 	script connect(!{Json(id)}, !{Json(name)})
 
 Finally, the form needs have its `onsubmit` attribute set, so that the WebSocket code is used instead of actually submitting the form:
 
 	form(action="room", method="POST", onsubmit="return sendMessage()")
 
-And that's it, we now have a fast and efficient multi-user chat. The only thing missing now is to add some persistence using an underlying database.
+And that's it, we now have a fast and efficient single-node multi-user chat. The only thing missing now is to add some persistence using an underlying database.
 
 ![Messages from multiple users](5-multi-user.png)
 
@@ -344,15 +346,15 @@ Simple as that. Now let's replace the actual string array of messages with a `Re
 		}
 	}
 
-As we can see, the code still looks almost the same. `RedisList` will issue all the necessary Redis commands for appending and reading the list entries.
+As we can see, the code still looks almost the same. `RedisList` will issue all the necessary Redis commands for appending and reading of the list entries.
 
 
 Using PubSub to enable horizontal scaling
 -----------------------------------------
 
-Now that we have a fast and persistent chat service running, there is just thing missing to the initial promise of this article. We need to enable the service to scale horizontally. With regards to the storage, this is easy to do by distributing the chatrooms across different Redis instances. But we also need to handle the case where users connect to different instances of the web service and want to chat with each other. For that, the different instances need to be able to notify each other about new messages, so we have to extend the basic `ManualEvent` based notification mechanism.
+Now that we have a fast and persistent chat service running, there is just one thing missing from the initial promise of this article: we need to enable the service to scale horizontally. With regards to the storage, this is easy to do by distributing the chat rooms across different Redis instances, for example by using [Redis Cluster][redis-cluster]. But we also need to handle the case where users connect to different instances of the web service and want to chat with each other. For that, the different instances need to be able to notify each other about new messages, so we have to extend the basic `ManualEvent` based notification mechanism.
 
-Fortunately, Redis has a PubSub functionality that we can use here. It consists of named "channels" to which anyone can send messages. All clients connected to the database can then subscribe to those channels and will then each receive these messages. For our use case, to keep things simple, we are going to use a single channel to which we will send the names of the rooms that got new messages.
+Fortunately, Redis has a PubSub functionality that we can use here. It consists of named "channels" to which any client can send messages. All clients connected to the database can then subscribe to one or more of those channels and will each receive these messages. For our use case, to keep things simple, we are going to use a single channel to which we will send the names of the rooms that got new messages.
 
 	final class Room {
 		void addMessage(string name, string message)
@@ -363,15 +365,18 @@ Fortunately, Redis has a PubSub functionality that we can use here. It consists 
 	}
 
 	final class WebChat {
-		// ...
-	
+		private {
+			// ...
+			RedisSubscriber m_subscriber;
+		}
+
 		this()
 		{
 			// ...
 
-			auto subscriber = RedisSubscriber(m_db.client);
-			subscriber.subscribe("webchat");
-			subscriber.listen((channel, message) {
+			m_subscriber = RedisSubscriber(m_db.client);
+			m_subscriber.subscribe("webchat");
+			m_subscriber.listen((channel, message) {
 				if (auto pr = message in m_rooms)
 					pr.messageEvent.emit();
 			});
@@ -380,7 +385,7 @@ Fortunately, Redis has a PubSub functionality that we can use here. It consists 
 		// ...
 	}
 
-All that is necessary to make this work is to publish a message with the name of the chat room in `Room.addMessage` instead of directly triggering `messageEvent`, as well as setting up a subscriber for the PubSub channel. `subscriber.listen()` will start a new background task that waits for new messages to arrive in the "webchat" channel and then calls the delegate that we pass it for each message. Within this callback we simply trigger the `messageEvent` of the corresponding `Room` and we are done.
+All that is necessary to make this work is to publish a message with the name of the chat room in `Room.addMessage` instead of directly triggering `messageEvent`, as well as setting up a subscriber for the PubSub channel. `subscriber.listen()` will start a new background task that waits for new messages to arrive in the "webchat" channel and then calls the delegate that we pass it for each message. Within this callback we simply trigger the `messageEvent` of the corresponding `Room`, and we are done.
 
 
 Open topics
@@ -396,3 +401,4 @@ Open topics
 [vibe-web]: http://vibed.org/api/vibe.web.web/
 [diet]: http://vibed.org/templates/diet
 [jade]: http://jade-lang.com/
+[redis-cluster]: http://redis.io/topics/cluster-tutorial
