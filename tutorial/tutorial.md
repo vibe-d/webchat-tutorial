@@ -1,13 +1,29 @@
-Writing a scalable web service from scratch
-===========================================
+A D Tutorial: Writing a scalable chat service
+=============================================
 
-This article is ...
+Introduction
+------------
 
-Why D?
-------
+...
 
-Goals
------
+
+Contents
+--------
+
+1. [Why use D?](#why-use-d)
+2. [Creating the project](#creating-the-project)
+3. [Defining the basic application outline](#defining-the-basic-application-outline)
+4. [Implementing a simple form based chat](#implementing-a-simple-form-based-chat)
+5. [Incremental updates](#incremental-updates)
+6. [Adding persistence](#adding-persistence)
+7. [Enabling horizontal scaling](#enabling-horizontal-scaling)
+
+
+Why use D?
+----------
+
+...
+
 
 Creating the project
 --------------------
@@ -55,7 +71,7 @@ Opening this address in the browser shows the following output:
 ![Initial Browser Output](1-init.png)
 
 
-Creating the basic application outline
+Defining the basic application outline
 --------------------------------------
 
 Now that we have a basic web application running, we can start to add some additional request handlers. The first thing to do is to remove the `hello` function and add a class that will be registered as a [web interface][vibe-web] instead. To be able to use client side scripts and CSS files later, we'll also add a catch-all route that serves files in the `public/` folder:
@@ -136,8 +152,8 @@ The name of this method is automatically mapped to a GET request for the path "/
 ![A chat room](3-chatroom.png)
 
 
-Implementing a basic form based chat
-------------------------------------
+Implementing a simple form based chat
+-------------------------------------
 
 We already have a form in our `room.dt`, so let's add a handler for it:
 
@@ -349,8 +365,8 @@ Simple as that. Now let's replace the actual string array of messages with a `Re
 As we can see, the code still looks almost the same. `RedisList` will issue all the necessary Redis commands for appending and reading of the list entries.
 
 
-Using PubSub to enable horizontal scaling
------------------------------------------
+Enabling horizontal scaling
+---------------------------
 
 Now that we have a fast and persistent chat service running, there is just one thing missing from the initial promise of this article: we need to enable the service to scale horizontally. With regards to the storage, this is easy to do by distributing the chat rooms across different Redis instances, for example by using [Redis Cluster][redis-cluster]. But we also need to handle the case where users connect to different instances of the web service and want to chat with each other. For that, the different instances need to be able to notify each other about new messages, so we have to extend the basic `ManualEvent` based notification mechanism.
 
