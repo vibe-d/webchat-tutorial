@@ -1,11 +1,14 @@
-A D Tutorial: Writing a scalable chat service
-=============================================
+A D Tutorial: Writing a scalable chat room service
+==================================================
 
 Introduction
 ------------
 
-...
+This tutorial has been somewhat inspired by the recent [Rust in Detail: Writing Scalable Chat Service from Scratch][rust-tutorial] tutorial. However, it is set up at a slightly higher abstraction level, leveraging the functionality of vibe.d, such as its HTTP server, the WebSocket handler, the Redis client, or its high level web application framework. For this reason we'll touch the features of the language on a higher level, without going into every detail. The goal is to give a good overview of the application development side of D and vibe.d, leaving the peculiarities of implementing low level library functionality to more advanced tutorials.
 
+The most important thing is to show that fast and memory safe code can actually be beautifully clean and concise, and (hopefully) easy to understand. I personally think D has made a lot of good choices in this area. Now if it would just get a proper memory safe borrowing concept (there is a proof-of-concept library implementation in vibe.d, but it really needs better language support: [`makeIsolated`](http://vibed.org/api/vibe.core.concurrency/makeIsolated))...
+
+Note: For this tutorial, the [DMD compiler](http://dlang.org/download.html), as well as the [DUB package manager](http://code.dlang.org/download) are assumed to be installed and working.
 
 Contents
 --------
@@ -28,12 +31,12 @@ Why use D?
 Creating the project
 --------------------
 
-We'll start off with invoking `dub init` on the command line:
+We'll start off by invoking `dub init` on the command line:
 
 	$ dub init webchat -t vibe.d
 	Successfully created an empty project in 'C:\Users\sludwig\Develop\webchat'.
 
-This has created very basic web application skeleton that starts up a HTTP server and shows a single welcome page. The source code is in `source/app.d`:
+This creates a very basic vibe.d based web application skeleton that starts up a HTTP server and shows a single welcome page. The source code is in `source/app.d`:
 
 	import vibe.d;
 
@@ -52,7 +55,9 @@ This has created very basic web application skeleton that starts up a HTTP serve
 		res.writeBody("Hello, World!");
 	}
 
-We can now run the application by simply invoking `dub` in the project directory:	
+As you can see, the code is all very straight forward and so far with few D specifics. The awkward looking function `shared static this()` is a so called "module constructor" that will only be run once at application start-up. Usually you'd define a `main` function for your application, but vibe.d can optionally provide a default implementation, which we will be using here. It is activated using the line `versions "VibeDefaultMain"` in the generated `dub.sdl` file.
+
+We can now run the application by simply invoking `dub` in the project directory:
 
 	$ cd webchat
 	$ dub
@@ -74,7 +79,7 @@ Opening this address in the browser shows the following output:
 Defining the basic application outline
 --------------------------------------
 
-Now that we have a basic web application running, we can start to add some additional request handlers. The first thing to do is to remove the `hello` function and add a class that will be registered as a [web interface][vibe-web] instead. To be able to use client side scripts and CSS files later, we'll also add a catch-all route that serves files in the `public/` folder:
+Now that we have a basic web application running, we can start to add some structure and introduce different HTTP request handlers for differnet request paths. The first thing to do is to remove the `hello` function and instead add a class that will be registered as a [web interface][vibe-web]. To be able to use client side scripts and CSS files later, we'll also add a catch-all route that looks for files in the `public/` folder for any request that didn't match one of the other routes.
 
 	final class WebChat {
 		// GET /
@@ -100,7 +105,9 @@ Now that we have a basic web application running, we can start to add some addit
 		logInfo("Please open http://127.0.0.1:8080/ in your browser.");
 	}
 
-To make the page rendering work, we still have to add `index.dt` to the views folder and fill it with some content. The file is formatted as a [Diet][diet] template, which is a [Jade][jade] dialect based on embedded D instead of JavaScript. This format removes all of the usual syntax overhead that HTML has, mainly end tags and the angle brackets, making the code much more readable.
+`registerWebInterface` is the entry point to [vibe.d's high-level web application framework](vibe-web). It takes a class instance and registers each of its public methods as a route in the `URLRouter`. By default, the method names are mapped to HTTP verbs and paths automatically. The first word is converted to the HTTP method and the rest is converted from CamelCase to lower_underscore_notation to yield the path for the route. In our case, `get` is mapped to a GET request and the matched path is simply "/" because there is no further suffix in the method name. See also the [documentation for `registerWebInterface`](register-web-interface) for more details.
+
+To make the page rendering work, we still have to add the referenced `index.dt` to the views folder and fill it with some content. The file is formatted as a [Diet][diet] template, which is a [Jade][jade] dialect based on embedded D instead of JavaScript. This format removes all of the usual syntax overhead that HTML has, mainly end tags and the angle brackets, making the code much more readable.
 
 	doctype html
 	html
@@ -119,20 +126,22 @@ To make the page rendering work, we still have to add `index.dt` to the views fo
 					input#name(type="text", name="name")
 				button(type="sumbit") Enter
 
-Now, you may have noticed that the call to render the above template is using template arguments instead of normal parameters (denoted by the `!`). The reason for that is that the Diet templates are actually translated into HTML at compile time using D's powerful meta-programming abilities. This means that the code generated, even if there are dynamic elements inside (see the title tag in the following `room.dt` file), is always as fast as it gets - usually as fast as serving a static page from RAM.
+Now, you may have noticed that the call to render the above template is using template arguments instead of normal parameters. In D, template arguments are denoted by `!`. Parenthesis can be left off if only a single argument is given.
 
-Now, running `dub` and refreshing the browser now yields this:
+The reason why `render` takes it's arguments as (compile time) template parameters is that Diet templates are actually translated into HTML at compile time. Using D's powerful meta-programming abilities, D code is generated that outputs static HTML code directly to the TCP socket. This means that rendering a Diet template, even if there are dynamic elements inside (see the later sections), is usually as fast as serving a static page from RAM. This means that additional caching is often not necessary.
+
+With this in place, running `dub` and refreshing the browser now yields this:
 
 ![Welcome page](2-index.png)
 
-Now let's create a new route in our `WebChat` class that handles the submitted form:
+Now let's create a second route in our `WebChat` class that handles the submitted form:
 
 	void getRoom(string id, string name)
 	{
 		render!("room.dt", id, name);
 	}
 
-The name of this method is automatically mapped to a GET request for the path "/room". The `id` and `name` parameters mean that it will accept corresponding form fields passed through the query string. With the following `room.dt` file, we can then enter a chat room:
+The name of this method is automatically mapped to a GET request to the path "/room". The `id` and `name` parameters mean that it will accept corresponding form fields passed through the query string. Again, we have to create the corresponding Diet template file, `room.dt`:
 
 	doctype html
 	html
@@ -149,21 +158,23 @@ The name of this method is automatically mapped to a GET request for the path "/
 				input(type="hidden", name="name", value=name)
 				input#inputLine(type="text", name="message", autofocus=true)
 
+Note the two `#{id}` elements. These insert the contents of the `id` variable that was passed to `render` into the generated HTML code. HTML encoding is automatically used to avoid the inserted text interfering with the HTML structure (XSS attacks).
+
 ![A chat room](3-chatroom.png)
 
 
 Implementing a simple form based chat
 -------------------------------------
 
-We already have a form in our `room.dt`, so let's add a handler for it:
+We already have a form in our `room.dt` to submit chat messages, so let's add a handler for it:
 
-	void postRoom(string id, string message)
+	void postRoom(string id, string name, string message)
 	{
-		// TODO: store chat message
+		// TODO: store the chat message
 		redirect("room?id="~id.urlEncode~"&name="~name.urlEncode);
 	}
 
-To get a working prototype, let's first add a simple in-memory store of the message history. Rooms are created on-demand using the `getOrCreateRoom` helper method.
+This simply redirects back to the chat room, so that multiple messages can be posted in sequence. To get a working prototype, let's first add a simple in-memory store of the message history. Rooms will be created on-demand using the `getOrCreateRoom` helper method.
 
 	final class Room {
 		string[] messages;
@@ -187,7 +198,8 @@ To get a working prototype, let's first add a simple in-memory store of the mess
 
 		void postRoom(string id, string name, string message)
 		{
-			getOrCreateRoom(id).addMessage(name, message);
+			if (message.length)
+				getOrCreateRoom(id).addMessage(name, message);
 			redirect("room?id="~id.urlEncode~"&name="~name.urlEncode);
 		}
 
@@ -212,7 +224,7 @@ And voilà, there go our first chat messages:
 Incremental updates
 -------------------
 
-Now that we have a basic chat going, let's use some JavaScript and WebSockets to get incremental updates instead of reloading the whole page after each message. This will also give us immediate updates when other clients write messages, so that no manual page reloading is necessary. We start with a route to handle incoming web socket connections:
+Now that we have a basic chat going, let's employ some JavaScript and WebSockets to get incremental updates instead of reloading the whole page after each message. This will also give us immediate updates when other clients write messages, so that no manual page reloading is necessary. We start with a route to handle incoming web socket connections:
 
 	// GET /ws?room=...&name=...
 	void getWS(string room, string name, scope WebSocket socket)
@@ -225,7 +237,7 @@ Now that we have a basic chat going, let's use some JavaScript and WebSockets to
 			while (socket.connected) {
 				while (next_message < r.messages.length)
 					socket.send(r.messages[next_message++]);
-				r.waitForMessage();
+				r.waitForMessage(next_message);
 			}
 		});
 
@@ -235,9 +247,9 @@ Now that we have a basic chat going, let's use some JavaScript and WebSockets to
 		}
 	}
 
-Inside of the handler, we first start a background task that will watch the `Room` for new messages and sends those to the connected WebSocket client. After that, we enter a loop to read all messages from the WebSocket. Each message is appended to the list of messages in that room.
+Inside of the handler, we first start a background task that will watch the `Room` for new messages and sends those to the connected WebSocket client. Then we enter a loop to read all messages from the WebSocket. Each message is appended to the list of messages in that room.
 
-For this to work we'll have to implement `Room.waitForMessage` and add a corresponding trigger to `addMessage`:
+For this to work we still have to implement `Room.waitForMessage` and add a corresponding trigger to `addMessage`:
 
 	final class Room {
 		string[] messages;
@@ -263,7 +275,7 @@ For this to work we'll have to implement `Room.waitForMessage` and add a corresp
 
 `ManualEvent` is a simple entity that has a blocking `wait()` method (it lets other tasks run while waiting), which can be triggered using `emit`. Many tasks can wait on the same event at the same time.
 
-Now that the backend is ready, we'll have to add some JavaScript to the frontend. The following file (`public/scripts/chat.js`) simply connects to our WebSocket endpoint and starts to listen for messages. Each message is appended to `<textarea>`'s contents. The `sendMessage` function will be the replacement for sending the chat message form. It sends the message over the WebSocket instead of submitting the form and then clears the message field for the next message.
+Now that the backend is ready, we'll have to add some JavaScript to the frontend. The following file (`public/scripts/chat.js`) simply connects to our WebSocket endpoint and begins to listen for messages. Each message is appended to `<textarea>`'s contents. The `sendMessage` function will be the replacement for sending the chat message form. It sends the message over the WebSocket instead of submitting the form and then clears the message field for the next message.
 
 	function sendMessage()
 	{
@@ -277,10 +289,6 @@ Now that the backend is ready, we'll have to add some JavaScript to the frontend
 	{
 		socket = new WebSocket("ws://127.0.0.1:8080/ws?room="+encodeURIComponent(room)+"&name="+encodeURIComponent(name));
 
-		socket.onopen = function() {
-			console.log("socket opened - waiting for messages");
-		}
-
 		socket.onmessage = function(message) {
 			var history = document.getElementById("history");
 			var previous = history.innerHTML.trim();
@@ -293,23 +301,21 @@ Now that the backend is ready, we'll have to add some JavaScript to the frontend
 			console.log("socket closed - reconnecting...");
 			connect();
 		}
-
-		socket.onerror = function() {
-			console.log("web socket error");
-		}
 	}
 
 This now gets integrated into `room.dt` by appending some script tags to the end of the `<body>` element:
 
 	- import vibe.data.json;
 	script(src="scripts/chat.js")
-	script connect(!{Json(id)}, !{Json(name)})
+	script connect(#{Json(id)}, #{Json(name)})
 
-Finally, the form needs have its `onsubmit` attribute set, so that the WebSocket code is used instead of actually submitting the form:
+The `#{Json(id)}` uses the [JSON module](http://vibed.org/api/vibe.data.json) to wrap the room's id as a `Json` value and then converts that back to a string. This will create a proper quoted string that is also valid JavaScript code.
+
+Finally, the form needs get an `onsubmit` attribute, so that the WebSocket code is used instead of actually submitting the form:
 
 	form(action="room", method="POST", onsubmit="return sendMessage()")
 
-And that's it, we now have a fast and efficient single-node multi-user chat. The only thing missing now is to add some persistence using an underlying database.
+And that's it, we now have a fast and efficient single-node multi-user chat. Still missing now is persistent storage of the chat messages using an underlying database.
 
 ![Messages from multiple users](5-multi-user.png)
 
@@ -317,7 +323,7 @@ And that's it, we now have a fast and efficient single-node multi-user chat. The
 Adding persistence
 ------------------
 
-The final step for completing this little chat application will be to add a persistent storage instead of the ad-hoc in-memory solution that we have so far. We'll be using Redis for this task, as it is a fast database that is very well suited for this kind of task, and because vibe.d conveniently includes a Redis client driver. The necessary setup looks like this:
+The final step for completing this little chat application will be to add a persistent storage instead of the ad-hoc in-memory solution that we have so far. We'll be using Redis for this task due to its speed and feature set, and because vibe.d conveniently includes a Redis client driver. The necessary setup looks like this:
 
 	final class WebChat {
 		private {
@@ -351,8 +357,8 @@ Simple as that. Now let's replace the actual string array of messages with a `Re
 
 		void addMessage(string name, string message)
 		{
-			this.messages.insertBack(name ~ ": " ~ message);
-			this.messageEvent.emit();
+			messages.insertBack(name ~ ": " ~ message);
+			messageEvent.emit();
 		}
 
 		void waitForMessage(long next_message)
@@ -362,13 +368,13 @@ Simple as that. Now let's replace the actual string array of messages with a `Re
 		}
 	}
 
-As we can see, the code still looks almost the same. `RedisList` will issue all the necessary Redis commands for appending and reading of the list entries.
+As we can see, the code still looks almost the same apart from using `insertBack` instead of the `~=` operator for appending messages. `RedisList` will issue the necessary Redis commands for appending and reading of the list entries.
 
 
 Enabling horizontal scaling
 ---------------------------
 
-Now that we have a fast and persistent chat service running, there is just one thing missing from the initial promise of this article: we need to enable the service to scale horizontally. With regards to the storage, this is easy to do by distributing the chat rooms across different Redis instances, for example by using [Redis Cluster][redis-cluster]. But we also need to handle the case where users connect to different instances of the web service and want to chat with each other. For that, the different instances need to be able to notify each other about new messages, so we have to extend the basic `ManualEvent` based notification mechanism.
+Now that we have a fast and persistent chat service running, there is just one thing missing from the initial promise of this tutorial: we need to enable the service to scale horizontally. With regards to the storage, this is basically already done by using a scalable database. The chat rooms can be distributed over multiple database instances, for example by using [Redis Cluster][redis-cluster]. But we also need to handle the case where we scale the web service backend itself by distributing requests over a set of instances. The different instances would have to be able to notify each other about new messages, so we have to extend the basic `ManualEvent` based notification mechanism to something that works across processes.
 
 Fortunately, Redis has a PubSub functionality that we can use here. It consists of named "channels" to which any client can send messages. All clients connected to the database can then subscribe to one or more of those channels and will each receive these messages. For our use case, to keep things simple, we are going to use a single channel to which we will send the names of the rooms that got new messages.
 
@@ -401,7 +407,7 @@ Fortunately, Redis has a PubSub functionality that we can use here. It consists 
 		// ...
 	}
 
-All that is necessary to make this work is to publish a message with the name of the chat room in `Room.addMessage` instead of directly triggering `messageEvent`, as well as setting up a subscriber for the PubSub channel. `subscriber.listen()` will start a new background task that waits for new messages to arrive in the "webchat" channel and then calls the delegate that we pass it for each message. Within this callback we simply trigger the `messageEvent` of the corresponding `Room`, and we are done.
+All that is necessary to make this work is to publish the name of the chat room as a message in `Room.addMessage` instead of directly triggering `messageEvent`, as well as setting up a subscriber for that channel. `subscriber.listen()` will start a new background task that waits for new messages to arrive in the "webchat" channel and then calls the supplied delegate for each message. Within this callback we simply trigger the `messageEvent` of the corresponding `Room`, and we are done.
 
 
 Open topics
@@ -414,7 +420,9 @@ Open topics
 - Styling
 - HTTP/2
 
+[rust-tutorial]: http://nbaksalyar.github.io/2015/07/10/writing-chat-in-rust.html
 [vibe-web]: http://vibed.org/api/vibe.web.web/
+[register-web-interface]: http://vibed.org/api/vibe.web.web/registerWebInterface
 [diet]: http://vibed.org/templates/diet
 [jade]: http://jade-lang.com/
 [redis-cluster]: http://redis.io/topics/cluster-tutorial
