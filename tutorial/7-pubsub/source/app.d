@@ -30,6 +30,7 @@ final class Room {
 final class WebChat {
 	private {
 		RedisDatabase m_db;
+		RedisSubscriber m_subscriber;
 		Room[string] m_rooms;
 	}
 
@@ -39,9 +40,9 @@ final class WebChat {
 		m_db = connectRedis("127.0.0.1").getDatabase(0);
 
 		// setup a PubSub subscriber to listen for new messages
-		auto subscriber = RedisSubscriber(m_db.client);
-		subscriber.subscribe("webchat");
-		subscriber.listen((channel, message) {
+		m_subscriber = RedisSubscriber(m_db.client);
+		m_subscriber.subscribe("webchat");
+		m_subscriber.listen((channel, message) {
 			if (auto pr = message in m_rooms)
 				pr.messageEvent.emit();
 		});
