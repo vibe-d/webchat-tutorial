@@ -51,13 +51,14 @@ We can now run the application by simply invoking `dub` in the project directory
 	Please open http://127.0.0.1:8080/ in your browser.
 
 Opening this address in the browser shows the following output:
+
 ![Initial Browser Output](1-init.png)
 
 
 Creating the basic application outline
 --------------------------------------
 
-Now that we have a basic web application running, we can start to add some additional request handlers. The first thing we are going to do is to remove the `hello` function and add a class that will be registered as a web interface instead. To be able to use client side scripts and CSS files later, we'll also add a catch-all route that serves files in the `public/` folder:
+Now that we have a basic web application running, we can start to add some additional request handlers. The first thing to do is to remove the `hello` function and add a class that will be registered as a [web interface][vibe-web] instead. To be able to use client side scripts and CSS files later, we'll also add a catch-all route that serves files in the `public/` folder:
 
 	final class WebChat {
 		// GET /
@@ -83,7 +84,7 @@ Now that we have a basic web application running, we can start to add some addit
 		logInfo("Please open http://127.0.0.1:8080/ in your browser.");
 	}
 
-To make this work, we are going to have to add `index.dt` to the views folder and fill it with some content. The file format is [Diet][diet], which is a [Jade][jade] dialect based on embedded D code instead of JavaScript.
+To make the page rendering work, we still have to add `index.dt` to the views folder and fill it with some content. The file is formatted as a [Diet][diet] template, which is a [Jade][jade] dialect based on embedded D instead of JavaScript. This format removes all of the usual syntax overhead that HTML has, mainly end tags and the angle brackets, making the code much more readable.
 
 	doctype html
 	html
@@ -103,16 +104,17 @@ To make this work, we are going to have to add `index.dt` to the views folder an
 				button(type="sumbit") Enter
 
 Running `dub` and refreshing the browser now yields this:
+
 ![Welcome page](2-index.png)
 
-Now let's create a route that handles the submitted form:
+Now let's create a new route in our `WebChat` class that handles the submitted form:
 
 	void getRoom(string id, string name)
 	{
 		render!("room.dt", id, name);
 	}
 
-The name of this method is automatically mapped to a GET request for the path "/room". The `id` parameter means that it will accept a corresponding form field using the query string. With the following `room.dt` file, we can then enter a chat room:
+The name of this method is automatically mapped to a GET request for the path "/room". The `id` and `name` parameters mean that it will accept corresponding form fields passed through the query string. With the following `room.dt` file, we can then enter a chat room:
 
 	doctype html
 	html
@@ -143,7 +145,7 @@ We already have a form in our `room.dt`, so let's add a handler for it:
 		redirect("room?id="~id.urlEncode~"&name="~name.urlEncode);
 	}
 
-To get a working prototype, let's add a simple in-memory store of messages. Rooms are created on-demand using the `getOrCreateRoom` helper method.
+To get a working prototype, let's add a simple in-memory store of the message history. Rooms are created on-demand using the `getOrCreateRoom` helper method.
 
 	final class Room {
 		string[] messages;
@@ -178,7 +180,7 @@ To get a working prototype, let's add a simple in-memory store of messages. Room
 		}
 	}
 
-Inside `room.dt`, we'll populate the `<textarea>` with messages from the history list:
+Inside `room.dt`, we can now populate the `<textarea>` with messages from the history list:
 
 	textarea#history(rows=20, readonly=true)
 		- foreach (ln; messages)
@@ -192,8 +194,9 @@ And voilà, there go our first chat messages:
 Incremental updates
 -------------------
 
-Now that we have a basic chat going, let's use some JavaScript and WebSockets to get incremental updates instead of reloading the whole page after each message. This will also give us immediate updates when other clients write messages. We start with a route to handle the web socket connection:
+Now that we have a basic chat going, let's use some JavaScript and WebSockets to get incremental updates instead of reloading the whole page after each message. This will also give us immediate updates when other clients write messages, so that no manual page reloading is necessary. We start with a route to handle incoming web socket connections:
 
+	// GET /ws?room=...&name=...
 	void getWS(string room, string name, scope WebSocket socket)
 	{
 		auto r = getOrCreateRoom(room);
@@ -214,9 +217,9 @@ Now that we have a basic chat going, let's use some JavaScript and WebSockets to
 		}
 	}
 
-Inside of the handler, we first start a background task that will watch the `Room` for new messages and sends those to the connected WebSocket client. After that, we enter a loop to read all messages from the WebSocket. Each message is appended to the list of messages, like in `postRoom()`, followed by triggering the `messageEvent` that the background task(s) use to wait for new messages.
+Inside of the handler, we first start a background task that will watch the `Room` for new messages and sends those to the connected WebSocket client. After that, we enter a loop to read all messages from the WebSocket. Each message is appended to the list of messages in that room.
 
-For this to work we'll have to implement `Room.waitForMessage`:
+For this to work we'll have to implement `Room.waitForMessage` and add a corresponding trigger to `addMessage`:
 
 	final class Room {
 		string[] messages;
@@ -242,41 +245,41 @@ For this to work we'll have to implement `Room.waitForMessage`:
 
 `ManualEvent` is a simple entity that has a blocking `wait()` method (it lets other tasks run while waiting), which can be triggered using `emit`. Many tasks can wait on the same event at the same time.
 
-Now that the backend is ready, we'll have to add some JavaScript to the frontend. The following file (`public/scripts/chat.js`) simply connects to our WebSocket endpoint and starts to listen for messages. Each message is appended to the `<textarea>`. The `sendMessage` function will be the replacement for sending the chat message form. It sends the message over the WebSocket instead and then clears the message field for the next message.
+Now that the backend is ready, we'll have to add some JavaScript to the frontend. The following file (`public/scripts/chat.js`) simply connects to our WebSocket endpoint and starts to listen for messages. Each message is appended to `<textarea>`'s contents. The `sendMessage` function will be the replacement for sending the chat message form. It sends the message over the WebSocket instead of submitting the form and then clears the message field for the next message.
 
-function sendMessage()
-{
-	var msg = document.getElementById("inputLine")
-	socket.send(msg.value);
-	msg.value = "";
-	return false;
-}
-
-function connect(room, name)
-{
-	socket = new WebSocket("ws://127.0.0.1:8080/ws?room="+encodeURIComponent(room)+"&name="+encodeURIComponent(name));
-
-	socket.onopen = function() {
-		console.log("socket opened - waiting for messages");
+	function sendMessage()
+	{
+		var msg = document.getElementById("inputLine")
+		socket.send(msg.value);
+		msg.value = "";
+		return false;
 	}
 
-	socket.onmessage = function(message) {
-		var history = document.getElementById("history");
-		var previous = history.innerHTML.trim();
-		if (previous.length) previous = previous + "\n";
-		history.innerHTML = previous + message.data;
-		history.scrollTop = history.scrollHeight;
-	}
+	function connect(room, name)
+	{
+		socket = new WebSocket("ws://127.0.0.1:8080/ws?room="+encodeURIComponent(room)+"&name="+encodeURIComponent(name));
 
-	socket.onclose = function() {
-		console.log("socket closed - reconnecting...");
-		connect();
-	}
+		socket.onopen = function() {
+			console.log("socket opened - waiting for messages");
+		}
 
-	socket.onerror = function() {
-		console.log("web socket error");
+		socket.onmessage = function(message) {
+			var history = document.getElementById("history");
+			var previous = history.innerHTML.trim();
+			if (previous.length) previous = previous + "\n";
+			history.innerHTML = previous + message.data;
+			history.scrollTop = history.scrollHeight;
+		}
+
+		socket.onclose = function() {
+			console.log("socket closed - reconnecting...");
+			connect();
+		}
+
+		socket.onerror = function() {
+			console.log("web socket error");
+		}
 	}
-}
 
 This now gets integrated into `room.dt` by appending some script tags to the end of the `<body>` element:
 
@@ -290,13 +293,13 @@ Finally, the form needs have its `onsubmit` attribute set, so that the WebSocket
 
 And that's it, we now have a fast and efficient multi-user chat. The only thing missing now is to add some persistence using an underlying database.
 
-![Messages from multiple users](5-multi-user.png.png)
+![Messages from multiple users](5-multi-user.png)
 
 
 Adding persistence
 ------------------
 
-The final step for completing this little chat application will be to add a persistent storage instead of the ad-hoc in-memory solution that we have so far. We'll be using Redis for this task, as it is a fast database very well suited for this kind of task and because vibe.d conveniently includes a Redis client driver. The necessary setup looks like this:
+The final step for completing this little chat application will be to add a persistent storage instead of the ad-hoc in-memory solution that we have so far. We'll be using Redis for this task, as it is a fast database that is very well suited for this kind of task, and because vibe.d conveniently includes a Redis client driver. The necessary setup looks like this:
 
 	final class WebChat {
 		private {
@@ -312,9 +315,7 @@ The final step for completing this little chat application will be to add a pers
 		// ...
 	}
 
-We will use Redis' PubSub functionality to notify the clients about new messages. The subscriber is bound to the channel "webchat", which will be used to send names of chat rooms that have just received a new message. Whenever we receive such a message, we'll emit the message event of that particular room.
-
-Now let's replace the actual string array of messages with a `RedisList!string`:
+Simple as that. Now let's replace the actual string array of messages with a `RedisList!string`:
 
 	final class Room {
 		RedisDatabase db;
@@ -349,9 +350,9 @@ As we can see, the code still looks almost the same. `RedisList` will issue all 
 Using PubSub to enable horizontal scaling
 -----------------------------------------
 
-Now that we have a fast and persistent chat service running, there is just thing missing to the initial promise of this article. We need to enable the service to scale horizontally. With regards to the storage, this is easy to do by distributing the chatrooms across different Redis instances. But we also need to handle the case where users connect to different instances of the web service and want to chat with each other. For that, the different instances need to be able to notify each other about new messages, so we have to extend the basic `ManualEvent` based mechanism.
+Now that we have a fast and persistent chat service running, there is just thing missing to the initial promise of this article. We need to enable the service to scale horizontally. With regards to the storage, this is easy to do by distributing the chatrooms across different Redis instances. But we also need to handle the case where users connect to different instances of the web service and want to chat with each other. For that, the different instances need to be able to notify each other about new messages, so we have to extend the basic `ManualEvent` based notification mechanism.
 
-Fortunately, Redis has a PubSub mechanism that we can use here. It consists of a set of named "channels" to which anyone can send messages. All clients connected to the database can then subscribe to those channels and will in turn receive these messages. For our use case, to keep things simple, we are going to use a single channel to which we will send the names of the rooms that got new messages.
+Fortunately, Redis has a PubSub functionality that we can use here. It consists of named "channels" to which anyone can send messages. All clients connected to the database can then subscribe to those channels and will then each receive these messages. For our use case, to keep things simple, we are going to use a single channel to which we will send the names of the rooms that got new messages.
 
 	final class Room {
 		void addMessage(string name, string message)
@@ -386,7 +387,12 @@ Open topics
 -----------
 
 - Authentication
-- Timestamps
-- HTTP/2
+- Redis setup/multiple instances
 - Benchmarking
+- Timestamps
 - Styling
+- HTTP/2
+
+[vibe-web]: http://vibed.org/api/vibe.web.web/
+[diet]: http://vibed.org/templates/diet
+[jade]: http://jade-lang.com/
