@@ -1,0 +1,16 @@
+doctype html
+html
+	head
+		title Welcome to WebChat
+	body
+		h1 Welcome to WebChat
+		p Please enter the name of a chat room to join a chat:
+
+		form(action="/room", method="GET")
+			p
+				label(for="id") Chat room:
+				input#id(type="text", name="id", autofocus=true)
+			p
+				label(for="name") Your name:
+				input#name(type="text", name="name")
+			button(type="sumbit") Enter
