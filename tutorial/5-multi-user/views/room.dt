@@ -16,5 +16,5 @@ html
 			input#inputLine(type="text", name="message", autofocus=true)
 
 		- import vibe.data.json;
-		script(src="#{req.rootDir}scripts/chat.js")
+		script(src="scripts/chat.js")
 		script connect(!{Json(id)}, !{Json(name)})

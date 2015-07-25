@@ -10,11 +10,7 @@ html
 		textarea#history(rows=20, readonly=true)
 			- foreach (ln; messages)
 				|= ln
-		form(action="room", method="POST", onsubmit="return sendMessage()")
+		form(action="room", method="POST")
 			input(type="hidden", name="id", value=id)
 			input(type="hidden", name="name", value=name)
 			input#inputLine(type="text", name="message", autofocus=true)
-
-		- import vibe.data.json;
-		script(src="#{req.rootDir}scripts/chat.js")
-		script connect(!{Json(id)}, !{Json(name)})
