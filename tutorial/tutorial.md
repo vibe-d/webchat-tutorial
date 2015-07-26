@@ -8,7 +8,7 @@ This tutorial has been somewhat inspired by the recent [Rust in Detail: Writing 
 
 The most important thing is to show that fast and memory safe code can actually be beautifully clean and concise, and (hopefully) easy to understand. I personally think D has made a lot of good choices in this area. Now if it would just get a proper memory safe borrowing concept (there is a proof-of-concept library implementation in vibe.d, but it really needs better language support: [`makeIsolated`](http://vibed.org/api/vibe.core.concurrency/makeIsolated))...
 
-Note: For this tutorial, the [DMD compiler](http://dlang.org/download.html), as well as the [DUB package manager](http://code.dlang.org/download) are assumed to be installed and working.
+Note: For this tutorial, the [DMD compiler](http://dlang.org/download.html), as well as the [DUB package manager](http://code.dlang.org/download) are assumed to be installed and available in `PATH`.
 
 Contents
 --------
@@ -57,7 +57,7 @@ void hello(HTTPServerRequest req, HTTPServerResponse res)
 }
 ```
 
-As you can see, the code is all very straight forward and so far with few D specifics. The awkward looking function `shared static this()` is a so called "module constructor" that will only be run once at application start-up. Usually you'd define a `main` function for your application, but vibe.d can optionally provide a default implementation, which we will be using here. It is activated using the line `versions "VibeDefaultMain"` in the generated `dub.sdl` file.
+As you can see, the code is all very straight forward and so far with few D specifics. The awkward looking function `shared static this()` is a  "module constructor" that will only be run once at application start-up. Usually you'd define a `main` function for your application to perform the initialization, but vibe.d optionally provides a default implementation, which we will be using here. It is activated using the line `versions "VibeDefaultMain"` in the generated `dub.sdl` file.
 
 We can now run the application by simply invoking `dub` in the project directory:
 
