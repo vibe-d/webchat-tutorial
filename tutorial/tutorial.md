@@ -41,7 +41,7 @@ So let's go and take a look at how these features look in practice. Or rather, b
 Prerequisites
 -------------
 
-To try out this tutorial, you need to have a working D language environment. This means the latest versions of the [DMD compiler](http://dlang.org/download.html), as well as the [DUB package manager](http://code.dlang.org/download) should be installed. You may also need to install libevent and possibly OpenSSL. See the [vibe.d README][vibe-d-readme].
+To try out this tutorial, you need to have a working D language environment. This means that the latest versions of the [DMD compiler](http://dlang.org/download.html), as well as the [DUB package manager](http://code.dlang.org/download) should be installed. On non-Windows systems you may also need to install libevent and possibly OpenSSL. See the [vibe.d README][vibe-d-readme].
 
 For the last two sections, a running [Redis][redis] instance is required.
 
