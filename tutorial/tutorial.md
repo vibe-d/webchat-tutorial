@@ -171,6 +171,7 @@ html
 		title #{id} - WebChat
 		style.
 			textarea, input { width: 100%; }
+			textarea { resize: vertical; }
 	body
 		h1 Room '#{id}'
 
