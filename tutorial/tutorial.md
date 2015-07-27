@@ -49,12 +49,12 @@ For the last two sections, a running [Redis][redis] instance is required.
 Creating the project
 --------------------
 
-We'll start off by invoking `dub init` on the command line:
+We'll start off by invoking `dub init` on the command line to create the skeleton for our application in a sub folder of the the current directory:
 
 	$ dub init webchat -t vibe.d
 	Successfully created an empty project in 'C:\Users\sludwig\Develop\webchat'.
 
-This creates a very basic vibe.d based web application skeleton that starts up a HTTP server and shows a single welcome page. The source code is in `source/app.d`:
+This creates a very basic vibe.d based web application package that starts up a HTTP server and shows a single welcome page. The source code is in `source/app.d`:
 
 ```D
 import vibe.d;
