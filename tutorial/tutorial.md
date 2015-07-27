@@ -7,12 +7,11 @@ Introduction
 This tutorial has been somewhat inspired by the recent [Rust in Detail: Writing Scalable Chat Service from Scratch][rust-tutorial] tutorial. However, it is set up at a slightly higher abstraction level, leveraging the functionality of vibe.d, such as its HTTP server, the WebSocket handler, the Redis client, and its high level web application framework. For this reason we'll touch the features of the language at a higher level, without going into every little detail. The goal is to give a good overview of the application development side of D and vibe.d, leaving the peculiarities of implementing low level library functionality to more advanced tutorials.
 
 
-Note: For this tutorial, the [DMD compiler](http://dlang.org/download.html), as well as the [DUB package manager](http://code.dlang.org/download) are assumed to be installed and available in `PATH`. In addition to that, a running [Redis][redis] instance is required for the last two sections.
-
 Contents
 --------
 
 1. [Why use D?](#why-use-d)
+1. [Prerequisites](#prerequisites)
 2. [Creating the project](#creating-the-project)
 3. [Defining the basic application outline](#defining-the-basic-application-outline)
 4. [Implementing a simple form based chat](#implementing-a-simple-form-based-chat)
@@ -37,6 +36,14 @@ Finally, the reason for the vibe.d toolkit being born, D comes with support for 
 But fibers use only a fraction of resources compared to a full thread and a context switch between different fibers is cheap compared to switching between threads. They also make the use of mutexes unnecessary to avoid data races, which further reduces the overhead (but there are special mutexes available to avoid higher level race conditions). For programs that are I/O bound, this means that a huge throughput can be achieved with minimum resource usage and maximum performance. But of course multi-threading can be combined with this to achieve even higher throughput, or to better distribute CPU heavy computations across CPU cores.
 
 So let's go and take a look at how these features look in practice. Or rather, based on the clean syntax and the abstraction facilities, how *in*visible these things usually are, and thus how much one can focus on the actual problem, when implementing applications.
+
+
+Prerequisites
+-------------
+
+To try out this tutorial, you need to have a working D language environment. This means the latest versions of the [DMD compiler](http://dlang.org/download.html), as well as the [DUB package manager](http://code.dlang.org/download) should be installed. You may also need to install libevent and possibly OpenSSL. See the [vibe.d README][vibe-d-readme].
+
+For the last two sections, a running [Redis][redis] instance is required.
 
 
 Creating the project
@@ -474,6 +481,7 @@ Open topics
 
 [rust-tutorial]: http://nbaksalyar.github.io/2015/07/10/writing-chat-in-rust.html
 [vibe-web]: http://vibed.org/api/vibe.web.web/
+[vibe-d-readme]: https://github.com/rejectedsoftware/vibe.d#additional-setup-on-mac-using-brew
 [isolated]: http://vibed.org/api/vibe.core.concurrency/makeIsolated
 [register-web-interface]: http://vibed.org/api/vibe.web.web/registerWebInterface
 [diet]: http://vibed.org/templates/diet
