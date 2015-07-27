@@ -385,6 +385,12 @@ final class WebChat {
 	}
 
 	// ...
+
+	private Room getOrCreateRoom(string id)
+	{
+		if (auto pr = id in m_rooms) return *pr;
+		return m_rooms[id] = new Room(m_db, id);
+	}
 }
 ```
 
