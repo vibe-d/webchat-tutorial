@@ -4,7 +4,7 @@ A D Tutorial: Writing a scalable chat room service
 Introduction
 ------------
 
-This tutorial has been somewhat inspired by the recent [Rust in Detail: Writing Scalable Chat Service from Scratch][rust-tutorial] tutorial. However, it is set up at a slightly higher abstraction level, leveraging the functionality of vibe.d, such as its HTTP server, the WebSocket handler, the Redis client, and its high level web application framework. For this reason we'll touch the features of the language at a higher level, without going into every little detail. The goal is to give a good overview of the application development side of D and vibe.d, leaving the peculiarities of implementing low level library functionality to more advanced tutorials.
+This tutorial has been somewhat inspired by the recent [Rust in Detail: Writing Scalable Chat Service from Scratch][rust-tutorial] tutorial. However, it is set up at a slightly higher abstraction level, leveraging the functionality of vibe.d, such as its HTTP server, the WebSocket handler, the [Redis][redis] client, and its high level web application framework. For this reason we'll touch the features of the language at a higher level, without going into every little detail. The goal is to give a good overview of the application development side of D and vibe.d, leaving the peculiarities of implementing low level library functionality to more advanced tutorials.
 
 
 Note: For this tutorial, the [DMD compiler](http://dlang.org/download.html), as well as the [DUB package manager](http://code.dlang.org/download) are assumed to be installed and available in `PATH`. In addition to that, a running Redis instance is required for the last two sections.
@@ -363,7 +363,7 @@ And that's it, we now have a fast and efficient single-node multi-user chat. Sti
 Adding persistence
 ------------------
 
-The final step for completing this little chat application will be to add a persistent storage instead of the ad-hoc in-memory solution that we have so far. We'll be using Redis for this task due to its speed and feature set, and because vibe.d conveniently includes a Redis client driver. The necessary setup looks like this:
+The final step for completing this little chat application will be to add a persistent storage instead of the ad-hoc in-memory solution that we have so far. We'll be using [Redis][redis] for this task due to its speed and feature set, and because vibe.d conveniently includes a Redis client driver. The necessary setup looks like this:
 
 ```D
 final class WebChat {
@@ -478,4 +478,5 @@ Open topics
 [register-web-interface]: http://vibed.org/api/vibe.web.web/registerWebInterface
 [diet]: http://vibed.org/templates/diet
 [jade]: http://jade-lang.com/
+[redis]: http://redis.io/
 [redis-cluster]: http://redis.io/topics/cluster-tutorial
