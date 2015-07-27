@@ -4,9 +4,8 @@ A D Tutorial: Writing a scalable chat room service
 Introduction
 ------------
 
-This tutorial has been somewhat inspired by the recent [Rust in Detail: Writing Scalable Chat Service from Scratch][rust-tutorial] tutorial. However, it is set up at a slightly higher abstraction level, leveraging the functionality of vibe.d, such as its HTTP server, the WebSocket handler, the Redis client, or its high level web application framework. For this reason we'll touch the features of the language on a higher level, without going into every detail. The goal is to give a good overview of the application development side of D and vibe.d, leaving the peculiarities of implementing low level library functionality to more advanced tutorials.
+This tutorial has been somewhat inspired by the recent [Rust in Detail: Writing Scalable Chat Service from Scratch][rust-tutorial] tutorial. However, it is set up at a slightly higher abstraction level, leveraging the functionality of vibe.d, such as its HTTP server, the WebSocket handler, the Redis client, and its high level web application framework. For this reason we'll touch the features of the language at a higher level, without going into every little detail. The goal is to give a good overview of the application development side of D and vibe.d, leaving the peculiarities of implementing low level library functionality to more advanced tutorials.
 
-The most important thing is to show that fast and memory safe code can actually be beautifully clean and concise, and (hopefully) easy to understand. I personally think D has made a lot of good choices in this area. Now if it would just get a proper memory safe borrowing concept (there is a proof-of-concept library implementation in vibe.d, but it really needs better language support: [`makeIsolated`](http://vibed.org/api/vibe.core.concurrency/makeIsolated))...
 
 Note: For this tutorial, the [DMD compiler](http://dlang.org/download.html), as well as the [DUB package manager](http://code.dlang.org/download) are assumed to be installed and available in `PATH`.
 
@@ -25,7 +24,19 @@ Contents
 Why use D?
 ----------
 
-...
+There are a lot of traits that make D a good choice for a broad range of tasks. Perhaps the biggest strength of the language is its expressiveness. It offers imperative, object oriented, functional and very powerful compile-time meta programming paradigms. Together they often open up interesting symbiotic possibilities and offer a surprisingly unrestrained environment to put ideas into practice. Something that tends to be a huge productivity boost.
+
+The compile time features, such as static reflection, user defined attributes, (string) mixins and string imports, make it possible to do things that would typically be restricted to dynamically typed languages. The prime example in this article is the declarative web framework with support for dynamically generated HTML pages using a template language that is actually compiled into machine code together with the rest of the program.
+
+The fact that this all works with natively compiled code and static typing means that it has an edge in performance and static code correctness over dynamically typed languages - while still being able to express ideas in the same convenient representations. Oh, any on top of the static type system, D has built-in support for unit tests and function contracts, too, so that it really facilitates writing robust code.
+
+Similar to Rust, it also supports compiler checked memory safety, which is an important asset to have when developing web services. The main differences to Rust are that this is an opt-in feature using the `@safe` attribute, and that unfortunately support for safe borrowing and reference counting is still missing (but in the works). In case of the former, vibe.d includes a proof-of-concept implementation in the form of an [`Isolated!T`][isolated] template.
+
+Finally, the reason for the vibe.d toolkit being born, D comes with support for fibers (aka "green threads"). Vibe.d uses those together with an event loop for doing asynchronous I/O to offer something very close to Go's goroutines, called "tasks". Huge numbers of tasks can run in the same thread, each in their own fiber. Whenever a task has to wait for some operation to finish - usually I/O, such as waiting for data from a TCP connection - it will automatically yield its fiber and lets other tasks execute instead.
+
+But fibers use only a fraction of resources compared to a full thread and a context switch between different fibers is cheap compared to switching between threads. They also make the use of mutexes unnecessary to avoid data races, which further reduces the overhead (but there are special mutexes available to avoid higher level race conditions). For programs that are I/O bound, this means that a huge throughput can be achieved with minimum resource usage and maximum performance. But of course multi-threading can be combined with this to achieve even higher throughput, or to better distribute CPU heavy computations across CPU cores.
+
+So let's go and take a look at how these features look in practice. Or rather, based on the clean syntax and the abstraction facilities, how *in*visible these things usually are, and thus how much one can focus on the actual problem, when implementing applications.
 
 
 Creating the project
@@ -335,7 +346,7 @@ script(src="scripts/chat.js")
 script connect(#{Json(id)}, #{Json(name)})
 ```
 
-The `#{Json(id)}` uses the [JSON module](http://vibed.org/api/vibe.data.json) to wrap the room's id as a `Json` value and then converts that back to a string. This will create a proper quoted string that is also valid JavaScript code.
+The `#{Json(...)}` there uses the [JSON module](http://vibed.org/api/vibe.data.json) to wrap a string as a `Json` value and then converts that back to a string. This will create a proper quoted string that, because it's JSON, is also valid JavaScript code.
 
 Finally, the form needs get an `onsubmit` attribute, so that the WebSocket code is used instead of actually submitting the form:
 
@@ -400,7 +411,7 @@ final class Room {
 }
 ```
 
-As we can see, the code still looks almost the same apart from using `insertBack` instead of the `~=` operator for appending messages. `RedisList` will issue the necessary Redis commands for appending and reading of the list entries.
+As we can see, the code still looks almost the same apart from using `insertBack` instead of the `~=` operator for appending messages. `RedisList` will issue the necessary Redis commands for appending and reading of the list entries. By the way, since in `room.dt` we are just iterating over the messages line-by-line, `RedisList` will read the reply coming from the Redis database lazily and the lines get piped directly through to the HTTP connection. This means that the list of messages never has to be actually stored in memory and in theory we could now pass gigabytes of chat history to the client with minimal RAM usage.
 
 
 Enabling horizontal scaling
@@ -460,6 +471,7 @@ Open topics
 
 [rust-tutorial]: http://nbaksalyar.github.io/2015/07/10/writing-chat-in-rust.html
 [vibe-web]: http://vibed.org/api/vibe.web.web/
+[isolated]: http://vibed.org/api/vibe.core.concurrency/makeIsolated
 [register-web-interface]: http://vibed.org/api/vibe.web.web/registerWebInterface
 [diet]: http://vibed.org/templates/diet
 [jade]: http://jade-lang.com/
