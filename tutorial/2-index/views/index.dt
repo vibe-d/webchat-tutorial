@@ -13,4 +13,4 @@ html
 			p
 				label(for="name") Your name:
 				input#name(type="text", name="name")
-			button(type="sumbit") Enter
+			button(type="submit") Enter

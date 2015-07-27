@@ -149,7 +149,7 @@ html
 			p
 				label(for="name") Your name:
 				input#name(type="text", name="name")
-			button(type="sumbit") Enter
+			button(type="submit") Enter
 ```
 
 Now, you may have noticed that the call to render the above template is using template arguments instead of normal parameters. In D, template arguments are denoted by `!`. Parenthesis can be left off if only a single argument is given.
