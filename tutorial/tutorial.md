@@ -7,7 +7,7 @@ Introduction
 This tutorial has been somewhat inspired by the recent [Rust in Detail: Writing Scalable Chat Service from Scratch][rust-tutorial] tutorial. However, it is set up at a slightly higher abstraction level, leveraging the functionality of vibe.d, such as its HTTP server, the WebSocket handler, the Redis client, and its high level web application framework. For this reason we'll touch the features of the language at a higher level, without going into every little detail. The goal is to give a good overview of the application development side of D and vibe.d, leaving the peculiarities of implementing low level library functionality to more advanced tutorials.
 
 
-Note: For this tutorial, the [DMD compiler](http://dlang.org/download.html), as well as the [DUB package manager](http://code.dlang.org/download) are assumed to be installed and available in `PATH`.
+Note: For this tutorial, the [DMD compiler](http://dlang.org/download.html), as well as the [DUB package manager](http://code.dlang.org/download) are assumed to be installed and available in `PATH`. In addition to that, a running Redis instance is required for the last two sections.
 
 Contents
 --------
@@ -124,7 +124,7 @@ shared static this()
 
 `registerWebInterface` is the entry point to [vibe.d's high-level web application framework](vibe-web). It takes a class instance and registers each of its public methods as a route in the `URLRouter`. By default, the method names are mapped to HTTP verbs and paths automatically. The first word is converted to the HTTP method and the rest is converted from CamelCase to lower_underscore_notation to yield the path for the route. In our case, `get` is mapped to a GET request and the matched path is simply "/" because there is no further suffix in the method name. See also the [documentation for `registerWebInterface`](register-web-interface) for more details.
 
-To make the page rendering work, we still have to add the referenced `index.dt` to the views folder and fill it with some content. The file is formatted as a [Diet][diet] template, which is a [Jade][jade] dialect based on embedded D instead of JavaScript. This format removes all of the usual syntax overhead that HTML has, mainly end tags and the angle brackets, making the code much more readable.
+To make the page rendering work, we still have to add the referenced `index.dt` to the `views/` folder and fill it with some content. The file is formatted as a [Diet][diet] template, which is a [Jade][jade] dialect based on embedded D instead of JavaScript. This format removes all of the usual syntax overhead that HTML has, mainly end tags and the angle brackets, making the code much more readable.
 
 ```Diet
 doctype html
@@ -162,7 +162,7 @@ void getRoom(string id, string name)
 }
 ```
 
-The name of this method is automatically mapped to a GET request to the path "/room". The `id` and `name` parameters mean that it will accept corresponding form fields passed through the query string. Again, we have to create the corresponding Diet template file, `room.dt`:
+The name of this method is automatically mapped to a GET request to the path "/room". The `id` and `name` parameters mean that it will accept corresponding form fields passed through the query string. Again, we have to create the corresponding Diet template file, `views/room.dt`:
 
 ```Diet
 doctype html
@@ -253,7 +253,7 @@ And voilà, there go our first chat messages:
 Incremental updates
 -------------------
 
-Now that we have a basic chat going, let's employ some JavaScript and WebSockets to get incremental updates instead of reloading the whole page after each message. This will also give us immediate updates when other clients write messages, so that no manual page reloading is necessary. We start with a route to handle incoming web socket connections:
+Now that we have a basic chat going, let's employ some JavaScript and WebSockets to get incremental updates instead of reloading the whole page after each message. This will also give us immediate updates when other clients write messages, so that no manual page reloading is necessary. We start with a new route in `WebChat` to handle incoming web socket connections:
 
 ```D
 // GET /ws?room=...&name=...
@@ -308,7 +308,7 @@ final class Room {
 
 `ManualEvent` is a simple entity that has a blocking `wait()` method (it lets other tasks run while waiting), which can be triggered using `emit`. Many tasks can wait on the same event at the same time.
 
-Now that the backend is ready, we'll have to add some JavaScript to the frontend. The following file (`public/scripts/chat.js`) simply connects to our WebSocket endpoint and begins to listen for messages. Each message is appended to `<textarea>`'s contents. The `sendMessage` function will be the replacement for sending the chat message form. It sends the message over the WebSocket instead of submitting the form and then clears the message field for the next message.
+Now that the backend is ready, we'll have to add some JavaScript to the frontend. The following file, `public/scripts/chat.js`, simply connects to our WebSocket endpoint and begins to listen for messages. Each message is appended to `<textarea>`'s contents. The `sendMessage` function will be the replacement for sending the chat message form. It sends the message over the WebSocket instead of submitting the form and then clears the message field for the next message.
 
 ```JavaScript
 function sendMessage()
@@ -338,7 +338,7 @@ function connect(room, name)
 }
 ```
 
-This now gets integrated into `room.dt` by appending some script tags to the end of the `<body>` element:
+This now gets integrated into `room.dt` by appending some script tags within `room.dt`'s `<body>` element:
 
 ```Diet
 - import vibe.data.json;
@@ -411,7 +411,9 @@ final class Room {
 }
 ```
 
-As we can see, the code still looks almost the same apart from using `insertBack` instead of the `~=` operator for appending messages. `RedisList` will issue the necessary Redis commands for appending and reading of the list entries. By the way, since in `room.dt` we are just iterating over the messages line-by-line, `RedisList` will read the reply coming from the Redis database lazily and the lines get piped directly through to the HTTP connection. This means that the list of messages never has to be actually stored in memory and in theory we could now pass gigabytes of chat history to the client with minimal RAM usage.
+As we can see, the code still looks almost the same apart from using `insertBack` instead of the `~=` operator for appending messages. `RedisList` will issue the necessary Redis commands for appending and reading of the list entries.
+
+By the way, since in `room.dt` we are just iterating over the messages line-by-line, `RedisList` will read the reply coming from the Redis database lazily and the lines get piped directly through to the HTTP connection while the reply is read from the database. Apart from minimizing the latency of the reply, this also means that the list of messages never has to be actually stored in memory and in theory we could now pass gigabytes of chat history to the client with minimal RAM usage.
 
 
 Enabling horizontal scaling
