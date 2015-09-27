@@ -1,10 +1,10 @@
-A D Tutorial: Writing a scalable chat room service
-==================================================
+An introduction vibe.d: Writing a scalable chat room service in D
+=================================================================
 
 Introduction
 ------------
 
-This tutorial has been somewhat inspired by the recent [Rust in Detail: Writing Scalable Chat Service from Scratch][rust-tutorial] tutorial. However, it is set up at a slightly higher abstraction level, leveraging the functionality of vibe.d, such as its HTTP server, the WebSocket handler, the Redis client, and its high level web application framework. For this reason we'll touch the features of the language at a higher level, without going into every little detail. The goal is to give a good overview of the application development side of D and vibe.d, leaving the peculiarities of implementing low level library functionality to more advanced tutorials.
+This tutorial aims to give a practical high level introduction to web development in D. It leverages the functionality of vibe.d, such as its HTTP server, the WebSocket handler, the Redis client, and its high level web application framework. For this reason we'll touch the features of the language also at a higher level, without going into every little detail. The goal is to give a good overview of the application development side of D and vibe.d, leaving the peculiarities of implementing low level library functionality to more advanced tutorials.
 
 
 Contents
@@ -29,9 +29,9 @@ The compile time features, such as static reflection, user defined attributes, (
 
 The fact that this all works with natively compiled code and static typing means that it has an edge in performance and static code correctness over dynamically typed languages - while still being able to express ideas in the same convenient representations. Oh, any on top of the static type system, D has built-in support for unit tests and function contracts, too, so that it really facilitates writing robust code.
 
-Similar to Rust, it also supports compiler checked memory safety, which is an important asset to have when developing web services. The main differences to Rust are that this is an opt-in feature using the `@safe` attribute, and that unfortunately support for safe borrowing and reference counting is still missing (but in the works). In case of the former, vibe.d includes a proof-of-concept implementation in the form of an [`Isolated!T`][isolated] template.
+Similar to [Rust][rust], it also supports compiler checked memory safety, which is an important asset to have when developing web services. The main differences to Rust are that this is an opt-in feature using the `@safe` attribute, and that unfortunately support for safe borrowing and reference counting is still missing (but in the works). In case of the former, vibe.d includes a proof-of-concept implementation in the form of an [`Isolated!T`][isolated] template.
 
-Finally, the reason for the vibe.d toolkit being born, D comes with support for fibers (aka "green threads"). Vibe.d uses those together with an event loop for doing asynchronous I/O to offer something very close to Go's goroutines, called "tasks". Huge numbers of tasks can run in the same thread, each in their own fiber. Whenever a task has to wait for some operation to finish - usually I/O, such as waiting for data from a TCP connection - it will automatically yield its fiber and lets other tasks execute instead.
+Finally, the reason for the vibe.d toolkit being born, D comes with support for fibers (aka "green threads"). Vibe.d uses those together with an event loop for doing asynchronous I/O to offer something very close to [Go][go]'s goroutines, called "tasks". Huge numbers of tasks can run in the same thread, each in their own fiber. Whenever a task has to wait for some operation to finish - usually I/O, such as waiting for data from a TCP connection - it will automatically yield its fiber and lets other tasks execute instead.
 
 But fibers use only a fraction of resources compared to a full thread and a context switch between different fibers is cheap compared to switching between threads. They also make the use of mutexes unnecessary to avoid data races, which further reduces the overhead (but there are special mutexes available to avoid higher level race conditions). For programs that are I/O bound, this means that a huge throughput can be achieved with minimum resource usage and maximum performance. But of course multi-threading can be combined with this to achieve even higher throughput, or to better distribute CPU heavy computations across CPU cores.
 
@@ -152,9 +152,9 @@ html
 			button(type="submit") Enter
 ```
 
-Now, you may have noticed that the call to render the above template is using template arguments instead of normal parameters. In D, template arguments are denoted by `!`. Parenthesis can be left off if only a single argument is given.
+Now, you may have noticed that the call to render the above template is using compile time (template) arguments instead of normal parameters. In D, template arguments are denoted by `!`. Parenthesis can be left off if only a single argument is given.
 
-The reason why `render` takes it's arguments as (compile time) template parameters is that Diet templates are actually translated into HTML at compile time. Using D's powerful meta-programming abilities, D code is generated that outputs static HTML code directly to the TCP socket. This means that rendering a Diet template, even if there are dynamic elements inside (see the later sections), is usually as fast as serving a static page from RAM. This means that additional caching is often not necessary.
+The reason why `render` takes it's arguments as template parameters is that Diet templates are actually translated into HTML at compile time. Using D's powerful meta-programming abilities, D code is generated from the Diet source code that outputs static HTML code directly to the TCP socket. This means that rendering a Diet template, even if there are dynamic elements inside (see the later sections), is usually as fast as serving a static page from RAM. This means that additional caching is often not necessary.
 
 With this in place, running `dub` and refreshing the browser now yields this:
 
@@ -169,7 +169,7 @@ void getRoom(string id, string name)
 }
 ```
 
-The name of this method is automatically mapped to a GET request to the path "/room". The `id` and `name` parameters mean that it will accept corresponding form fields passed through the query string. Again, we have to create the corresponding Diet template file, `views/room.dt`:
+The name of this method is automatically mapped to a GET request to the path "/room". The `id` and `name` parameters mean that it will accept form fields with those names passed through the query string. Again, we have to create the corresponding Diet template file, `views/room.dt`:
 
 ```Diet
 doctype html
@@ -485,7 +485,9 @@ Open topics
 - Styling
 - HTTP/2
 
+[rust]: https://www.rust-lang.org/
 [rust-tutorial]: http://nbaksalyar.github.io/2015/07/10/writing-chat-in-rust.html
+[go]: https://golang.org/
 [vibe-web]: http://vibed.org/api/vibe.web.web/
 [vibe-d-readme]: https://github.com/rejectedsoftware/vibe.d#additional-setup-on-mac-using-brew
 [isolated]: http://vibed.org/api/vibe.core.concurrency/makeIsolated
