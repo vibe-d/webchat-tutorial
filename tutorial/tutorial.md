@@ -1,10 +1,10 @@
-An introduction vibe.d: Writing a scalable chat room service in D
-=================================================================
+An introduction to vibe.d: Writing a scalable chat room service in D
+====================================================================
 
 Introduction
 ------------
 
-This tutorial aims to give a practical high level introduction to web development in D. It leverages the functionality of vibe.d, such as its HTTP server, the WebSocket handler, the Redis client, and its high level web application framework. For this reason we'll touch the features of the language also at a higher level, without going into every little detail. The goal is to give a good overview of the application development side of D and vibe.d, leaving the peculiarities of implementing low level library functionality to more advanced tutorials.
+This tutorial aims to give a practical high level introduction to web development in D. It leverages the functionality of vibe.d, such as its HTTP server, the WebSocket handler, the Redis client, and its high level web application framework. For this reason we'll also touch the features of the language at a higher level, without going into every little detail.
 
 
 Contents
