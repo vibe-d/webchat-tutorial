@@ -130,7 +130,7 @@ shared static this()
 }
 ```
 
-`registerWebInterface` is the entry point to [vibe.d's high-level web application framework](vibe-web). It takes a class instance and registers each of its public methods as a route in the `URLRouter`. By default, the method names are mapped to HTTP verbs and paths automatically. The first word is converted to the HTTP method and the rest is converted from CamelCase to lower_underscore_notation to yield the path for the route. In our case, `get` is mapped to a GET request and the matched path is simply "/" because there is no further suffix in the method name. See also the [documentation for `registerWebInterface`](register-web-interface) for more details.
+`registerWebInterface` is the entry point to [vibe.d's high-level web application framework][vibe-web]. It takes a class instance and registers each of its public methods as a route in the `URLRouter`. By default, the method names are mapped to HTTP verbs and paths automatically. The first word is converted to the HTTP method and the rest is converted from CamelCase to lower\_underscore\_notation to yield the path for the route. In our case, `get` is mapped to a GET request and the matched path is simply "/" because there is no further suffix in the method name. See also the [documentation for `registerWebInterface`][register-web-interface] for more details.
 
 To make the page rendering work, we still have to add the referenced `index.dt` to the `views/` folder and fill it with some content. The file is formatted as a [Diet][diet] template, which is a [Jade][jade] dialect based on embedded D instead of JavaScript. This format removes all of the usual syntax overhead that HTML has, mainly end tags and the angle brackets, making the code much more readable. The Diet template system is included with vibe.d and generally recommended, but there are [alternative systems][dub-template-libs] available based on plain text/HTML.
 
@@ -359,7 +359,7 @@ script connect(#{Json(id)}, #{Json(name)})
 
 The `#{Json(...)}` there uses the [JSON module](http://vibed.org/api/vibe.data.json) to wrap a string as a `Json` value and then converts that back to a string. This will create a proper quoted string that, because it's JSON, is also valid JavaScript code.
 
-Finally, the form needs get an `onsubmit` attribute, so that the WebSocket code is used instead of actually submitting the form:
+Finally, the form needs to get an `onsubmit` attribute, so that the WebSocket code is used instead of actually submitting the form:
 
 ```Diet
 form(action="room", method="POST", onsubmit="return sendMessage()")
