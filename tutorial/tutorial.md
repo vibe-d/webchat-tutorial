@@ -31,7 +31,7 @@ The fact that this all works with natively compiled code and static typing means
 
 Similar to [Rust][rust], it also supports compiler checked memory safety, which is an important asset to have when developing web services. The main differences to Rust are that this is an opt-in feature using the `@safe` attribute, and that unfortunately support for safe borrowing and reference counting is still missing (but in the works). In case of the former, vibe.d includes a proof-of-concept implementation in the form of an [`Isolated!T`][isolated] template.
 
-Finally, the reason for the vibe.d toolkit being born, D comes with support for fibers (aka "green threads"). Vibe.d uses those together with an event loop for doing asynchronous I/O to offer something very close to [Go][go]'s goroutines, called "tasks". Huge numbers of tasks can run in the same thread, each in their own fiber. Whenever a task has to wait for some operation to finish - usually I/O, such as waiting for data from a TCP connection - it will automatically yield its fiber and lets other tasks execute instead.
+Finally, the reason for the vibe.d toolkit being born, D comes with support for [fibers](d-fibers) (aka "green threads" and similar to coroutines). Vibe.d uses those together with an event loop for doing asynchronous I/O to offer something very close to [Go][go]'s goroutines, called "tasks". Huge numbers of tasks can run in the same thread, each in their own fiber. Whenever a task has to wait for some operation to finish - usually I/O, such as waiting for data from a TCP connection - it will automatically yield its fiber and lets other tasks execute instead.
 
 But fibers use only a fraction of resources compared to a full thread and a context switch between different fibers is cheap compared to switching between threads. They also make the use of mutexes unnecessary to avoid data races, which further reduces the overhead (but there are special mutexes available to avoid higher level race conditions). For programs that are I/O bound, this means that a huge throughput can be achieved with minimum resource usage and maximum performance. But of course multi-threading can be combined with this to achieve even higher throughput, or to better distribute CPU heavy computations across CPU cores.
 
@@ -131,7 +131,7 @@ shared static this()
 
 `registerWebInterface` is the entry point to [vibe.d's high-level web application framework](vibe-web). It takes a class instance and registers each of its public methods as a route in the `URLRouter`. By default, the method names are mapped to HTTP verbs and paths automatically. The first word is converted to the HTTP method and the rest is converted from CamelCase to lower_underscore_notation to yield the path for the route. In our case, `get` is mapped to a GET request and the matched path is simply "/" because there is no further suffix in the method name. See also the [documentation for `registerWebInterface`](register-web-interface) for more details.
 
-To make the page rendering work, we still have to add the referenced `index.dt` to the `views/` folder and fill it with some content. The file is formatted as a [Diet][diet] template, which is a [Jade][jade] dialect based on embedded D instead of JavaScript. This format removes all of the usual syntax overhead that HTML has, mainly end tags and the angle brackets, making the code much more readable.
+To make the page rendering work, we still have to add the referenced `index.dt` to the `views/` folder and fill it with some content. The file is formatted as a [Diet][diet] template, which is a [Jade][jade] dialect based on embedded D instead of JavaScript. This format removes all of the usual syntax overhead that HTML has, mainly end tags and the angle brackets, making the code much more readable. The Diet template system is included with vibe.d and generally recommended, but there are [alternative systems][dub-template-libs] available based on plain text/HTML.
 
 ```Diet
 doctype html
@@ -207,7 +207,9 @@ void postRoom(string id, string name, string message)
 }
 ```
 
-This simply redirects back to the chat room, so that multiple messages can be posted in sequence. To get a working prototype, let's first add a simple in-memory store of the message history. Rooms will be created on-demand using the `getOrCreateRoom` helper method.
+This simply redirects back to the chat room, so that multiple messages can be posted in sequence. Note the `~` operator, which is used in D to concatenate strings and arrays. The `+` operator performs optimized element-wise addition instead (`[1, 2] + [3, 4] == [4, 6]`).
+
+To get a working prototype, let's first add a simple in-memory store of the message history. Rooms will be created on-demand using the `getOrCreateRoom` helper method.
 
 ```D
 final class WebChat {
@@ -496,3 +498,5 @@ Open topics
 [jade]: http://jade-lang.com/
 [redis]: http://redis.io/
 [redis-cluster]: http://redis.io/topics/cluster-tutorial
+[d-fibers]: https://dlang.org/phobos/core_thread.html#.Fiber
+[dub-template-libs]: http://code.dlang.org/search?q=template
