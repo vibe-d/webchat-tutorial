@@ -18,6 +18,7 @@ Contents
 5. [Incremental updates](#incremental-updates)
 6. [Adding persistence](#adding-persistence)
 7. [Enabling horizontal scaling](#enabling-horizontal-scaling)
+8. [Conclusion](#conclusion)
 
 
 Why use D?
@@ -475,6 +476,12 @@ final class Room {
 ```
 
 All that is necessary to make this work is to publish the name of the chat room as a message in `Room.addMessage` instead of directly triggering `messageEvent`, as well as setting up a subscriber for that channel. `subscriber.listen()` will start a new background task that waits for new messages to arrive in the "webchat" channel and then calls the supplied delegate for each message. Within this callback we simply trigger the `messageEvent` of the corresponding `Room`, and we are done.
+
+
+Conclusion
+----------
+
+With the tools presented in this article, you should have all the basics needed to start building your own high-performance web applications. Some aspects, such as user authentication, didn't fit the scope of this single post, but will most likely be part of a follow-up article.
 
 
 Open topics
