@@ -102,7 +102,7 @@ Opening this address in the browser shows the following output:
 Defining the basic application outline
 --------------------------------------
 
-Now that we have a basic web application running, we can start to add some structure and introduce different HTTP request handlers for differnet request paths. The first thing to do is to remove the `hello` function and instead add a class that will be registered as a [web interface][vibe-web]. To be able to use client side scripts and CSS files later, we'll also add a catch-all route that looks for files in the `public/` folder for any request that didn't match one of the other routes.
+Now that we have a basic web application running, we can start to add some structure and introduce different HTTP request handlers for different request paths. The first thing to do is to remove the `hello` function and instead add a class that will be registered as a [web interface][vibe-web]. To be able to use client side scripts and CSS files later, we'll also add a catch-all route that looks for files in the `public/` folder for any request that didn't match one of the other routes.
 
 ```D
 final class WebChat {
