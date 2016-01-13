@@ -272,7 +272,7 @@ void getWS(string room, string name, scope WebSocket socket)
 {
 	auto r = getOrCreateRoom(room);
 
-	runTask({
+	auto writer = runTask({
 		auto next_message = r.messages.length;
 
 		while (socket.connected) {
@@ -286,6 +286,8 @@ void getWS(string room, string name, scope WebSocket socket)
 		auto message = socket.receiveText();
 		if (message.length) r.addMessage(name, message);
 	}
+
+	writer.join(); // wait for writer task to finish
 }
 ```
 

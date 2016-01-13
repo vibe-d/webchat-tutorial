@@ -33,7 +33,7 @@ final class WebChat {
 
 		// watch for new messages in the history and send them
 		// to the client
-		runTask({
+		auto writer = runTask({
 			// keep track of the last message that got already sent to the client
 			// we assume that we sent all message so far
 			auto next_message = r.messages.length;
@@ -51,6 +51,8 @@ final class WebChat {
 			auto message = socket.receiveText();
 			if (message.length) r.addMessage(name, message);
 		}
+
+		writer.join(); // wait for writer task to finish
 	}
 
 	private Room getOrCreateRoom(string id)
