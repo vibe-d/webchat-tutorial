@@ -12,9 +12,9 @@ function connect(room, name)
 
 	socket.onmessage = function(message) {
 		var history = document.getElementById("history");
-		var previous = history.innerHTML.trim();
+		var previous = history.textContent.trim();
 		if (previous.length) previous = previous + "\n";
-		history.innerHTML = previous + message.data;
+		history.textContent = previous + message.data;
 		history.scrollTop = history.scrollHeight;
 	}
 
