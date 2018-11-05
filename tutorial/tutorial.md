@@ -60,7 +60,7 @@ This creates a very basic vibe.d based web application package that starts up a 
 ```D
 import vibe.d;
 
-shared static this()
+void main()
 {
 	auto settings = new HTTPServerSettings;
 	settings.port = 8080;
@@ -68,6 +68,8 @@ shared static this()
 	listenHTTP(settings, &hello);
 
 	logInfo("Please open http://127.0.0.1:8080/ in your browser.");
+
+	runApplication();
 }
 
 void hello(HTTPServerRequest req, HTTPServerResponse res)
@@ -76,7 +78,7 @@ void hello(HTTPServerRequest req, HTTPServerResponse res)
 }
 ```
 
-As you can see, the code is all very straight forward and so far with few D specifics. The awkward looking function `shared static this()` is a  "module constructor" that will only be run once at application start-up. Usually you'd define a `main` function for your application to perform the initialization, but vibe.d optionally provides a default implementation, which we will be using here. It is activated using the line `versions "VibeDefaultMain"` in the generated `dub.sdl` file.
+As you can see, the code is all very straight forward and so far with few D specifics. The `main()` fuction will be executed automatically when the application starts, very similar to C/C++. `runApplication` starts the event loop and blocks until the application exits.
 
 We can now run the application by simply invoking `dub` in the project directory:
 
@@ -113,7 +115,7 @@ final class WebChat {
 	}
 }
 
-shared static this()
+void main()
 {
 	// the router will match incoming HTTP requests to the proper routes
 	auto router = new URLRouter;
@@ -132,6 +134,8 @@ shared static this()
 	//settings.options &= ~HTTPServerOption.errorStackTraces;
 	listenHTTP(settings, router);
 	logInfo("Please open http://127.0.0.1:8080/ in your browser.");
+
+	runApplication();
 }
 ```
 
@@ -303,7 +307,7 @@ For this to work we still have to implement `Room.waitForMessage` and add a corr
 ```D
 final class Room {
 	string[] messages;
-	ManualEvent messageEvent;
+	LocalManualEvent messageEvent;
 
 	this()
 	{
@@ -324,7 +328,7 @@ final class Room {
 }
 ```
 
-`ManualEvent` is a simple entity that has a blocking `wait()` method (it lets other tasks run while waiting), which can be triggered using `emit`. Many tasks can wait on the same event at the same time.
+`LocalManualEvent` is a simple entity that has a blocking `wait()` method (it lets other tasks run while waiting), which can be triggered using `emit`. Many tasks can wait on the same event at the same time.
 
 Now that the backend is ready, we'll have to add some JavaScript to the frontend. The following file, `public/scripts/chat.js`, simply connects to our WebSocket endpoint and begins to listen for messages. Each message is appended to `<textarea>`'s contents. The `sendMessage` function will be the replacement for sending the chat message form. It sends the message over the WebSocket instead of submitting the form and then clears the message field for the next message.
 
@@ -411,7 +415,7 @@ final class Room {
 	RedisDatabase db;
 	string id;
 	RedisList!string messages;
-	ManualEvent messageEvent;
+	LocalManualEvent messageEvent;
 
 	this(RedisDatabase db, string id)
 	{
@@ -443,7 +447,7 @@ By the way, since in `room.dt` we are just iterating over the messages line-by-l
 Enabling horizontal scaling
 ---------------------------
 
-Now that we have a fast and persistent chat service running, there is just one thing missing from the initial promise of this tutorial: we need to enable the service to scale horizontally. With regards to the storage, this is basically already done by using a scalable database. The chat rooms can be distributed over multiple database instances, for example by using [Redis Cluster][redis-cluster]. But supposed that this application would grow to millions of users, we also need to handle the case where the web service backend itself has to be scaled by distributing requests over multiple instances (on one or multiple machines). The different instances would have to be able to notify each other about new messages, so we have to extend the basic `ManualEvent` based notification mechanism to something that works across processes.
+Now that we have a fast and persistent chat service running, there is just one thing missing from the initial promise of this tutorial: we need to enable the service to scale horizontally. With regards to the storage, this is basically already done by using a scalable database. The chat rooms can be distributed over multiple database instances, for example by using [Redis Cluster][redis-cluster]. But supposed that this application would grow to millions of users, we also need to handle the case where the web service backend itself has to be scaled by distributing requests over multiple instances (on one or multiple machines). The different instances would have to be able to notify each other about new messages, so we have to extend the basic `LocalManualEvent` based notification mechanism to something that works across processes.
 
 Fortunately, Redis has a PubSub functionality that we can use here. It consists of named "channels" to which any client can send messages. All clients connected to the database can then subscribe to one or more of those channels and will each receive these messages. For our use case, to keep things simple, we are going to use a single channel to which we will send the names of the rooms that got new messages.
 

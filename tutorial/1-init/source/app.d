@@ -1,6 +1,6 @@
 import vibe.d;
 
-shared static this()
+void main()
 {
 	auto settings = new HTTPServerSettings;
 	settings.port = 8080;
@@ -8,6 +8,8 @@ shared static this()
 	listenHTTP(settings, &hello);
 
 	logInfo("Please open http://127.0.0.1:8080/ in your browser.");
+
+	runApplication();
 }
 
 void hello(HTTPServerRequest req, HTTPServerResponse res)

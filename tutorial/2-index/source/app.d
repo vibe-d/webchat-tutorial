@@ -8,7 +8,7 @@ final class WebChat {
 	}
 }
 
-shared static this()
+void main()
 {
 	// the router will match incoming HTTP requests to the proper routes
 	auto router = new URLRouter;
@@ -27,4 +27,6 @@ shared static this()
 	//settings.options &= ~HTTPServerOption.errorStackTraces;
 	listenHTTP(settings, router);
 	logInfo("Please open http://127.0.0.1:8080/ in your browser.");
+
+	runApplication();
 }
