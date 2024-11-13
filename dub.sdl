@@ -1,3 +1,4 @@
 name "webchat"
 description "A simple vibe.d server application."
-dependency "vibe-d" version="~>0.8.4"
+dependency "vibe-d" version="~>0.10.1"
+subConfigurations "vibe-d:tls" "openssl-static"

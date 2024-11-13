@@ -42,23 +42,28 @@ final class WebChat {
 		redirect("room?id="~id.urlEncode~"&name="~name.urlEncode);
 	}
 
-	// GET /ws?room=..., 
+	// GET /ws?room=...,
 	void getWS(string room, string name, scope WebSocket socket)
 	{
 		auto r = getOrCreateRoom(room);
 
 		// watch for new messages in the history and send them
 		// to the client
-		runTask({
+		runTask(delegate () nothrow{
 			// keep track of the last message that got already sent to the client
 			// we assume that we sent all message so far
-			auto next_message = r.messages.length;
-
-			// send new messages as they come in
-			while (socket.connected) {
-				while (next_message < r.messages.length)
-					socket.send(r.messages[next_message++]);
-				r.waitForMessage(next_message);
+			try
+			{
+				auto next_message = r.messages.length;
+				// send new messages as they come in
+				while (socket.connected) {
+					while (next_message < r.messages.length)
+						socket.send(r.messages[next_message++]);
+					r.waitForMessage(next_message);
+				}
+			}
+			catch (Exception e){
+				logInfo("Websocket crashed: %s", e);
 			}
 		});
 
